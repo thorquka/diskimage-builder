@@ -1,0 +1,3 @@
+#!/bin/bash
+unset DIB_RELEASE
+export DIB_DISTRIBUTION_MIRROR=http://mirror.switch.ch/ftp/mirror/fedora/linux

@@ -1,0 +1,3 @@
+#!/bin/bash
+unset DIB_RELEASE
+export DIB_DISTRIBUTION_MIRROR=http://ch.archive.ubuntu.com/ubuntu
