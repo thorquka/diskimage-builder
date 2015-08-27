@@ -26,17 +26,10 @@ echo $DISTRO_NAME > /etc/hostname
 
 # cloud images expect eth0 and eth1 to use dhcp.
 mkdir -p /etc/network/interfaces.d
-cat << EOF | tee /etc/network/interfaces
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet dhcp
-
-auto eth1
-iface eth1 inet dhcp
-
-source /etc/network/interfaces.d/*
-
+echo "source /etc/network/interfaces.d/*" >> /etc/network/interfaces
+for interface in eth0 eth1; do
+    cat << EOF | tee /etc/network/interfaces.d/$interface
+auto $interface
+iface $interface inet dhcp
 EOF
-
+done

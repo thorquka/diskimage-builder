@@ -9,4 +9,22 @@ set -o pipefail
 install-packages -e python-dev git cloud-init
 rm -rf /tmp/ironic-python-agent
 
-sudo systemctl disable iptables.service
+case "$DIB_INIT_SYSTEM" in
+    upstart)
+        if [ -f /etc/init/ufw.conf ]; then
+            mv /etc/init/ufw.conf /etc/init/ufw.conf.disabled
+        fi
+        ;;
+    systemd)
+        systemctl disable iptables.service
+        systemctl enable openstack-ironic-python-agent.service
+        ;;
+    sysv)
+        update-rc.d iptables disable
+        update-rc.d openstack-ironic-python-agent enable
+        ;;
+    *)
+        echo "Unsupported init system"
+        exit 1
+        ;;
+esac

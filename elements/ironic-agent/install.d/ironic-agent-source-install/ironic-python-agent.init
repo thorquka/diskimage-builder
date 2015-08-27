@@ -1,18 +1,18 @@
 #!/bin/sh -e
 ### BEGIN INIT INFO
-# Provides:          simple-init
-# Required-Start:    $local_fs
+# Provides:          ironic-python-agent
+# Required-Start:    $local_fs networking
 # Required-Stop:     $local_fs
 # Default-Start:     S
 # Default-Stop:      0 6
-# X-Start-Before:    networking
-# Short-Description: Autodetect network interfaces
-# Description:       Autodetect network interfaces during boot and configure them for DHCP
+# X-Start-Before:
+# Short-Description: Ironic Python Agent
+# Description:       Starts Ironic Python Agent for instance deployment
 ### END INIT INFO
 
-NAME=simple-init
+NAME=ironic-python-agent
 INIT_NAME=/etc/init.d/${NAME}
-SCRIPT_NAME=/usr/local/sbin/${NAME}.sh
+SCRIPT_NAME=/usr/bin/${NAME}
 
 [ -x $SCRIPT_NAME ] || exit 0
 
