@@ -6,7 +6,8 @@ fi
 set -eu
 set -o pipefail
 
-install-packages -e python-dev git cloud-init
+install-packages -e git cloud-init
+
 rm -rf /tmp/ironic-python-agent
 
 case "$DIB_INIT_SYSTEM" in
@@ -17,11 +18,10 @@ case "$DIB_INIT_SYSTEM" in
         ;;
     systemd)
         systemctl disable iptables.service
-        systemctl enable openstack-ironic-python-agent.service
+        systemctl enable $(svc-map ironic-python-agent).service
         ;;
     sysv)
         update-rc.d iptables disable
-        update-rc.d openstack-ironic-python-agent enable
         ;;
     *)
         echo "Unsupported init system"

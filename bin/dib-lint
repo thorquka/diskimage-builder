@@ -61,12 +61,17 @@ error() {
 rc=0
 TMPDIR=$(mktemp -d /tmp/tmp.XXXXXXXXXX)
 trap "rm -rf $TMPDIR" EXIT
-for i in $(find elements -type f \
-                -not -name \*~ \
-                -not -name \*.rst \
-                -not -name \*.py \
+for i in $(find elements -type f   \
+                -not -name \*~     \
+                -not -name \#\*\#  \
+                -not -name \*.orig \
+                -not -name \*.rst  \
+                -not -name \*.yaml \
+                -not -name \*.py   \
                 -not -name \*.pyc); do
+
     exclusions=("$(parse_exclusions $i)")
+
     # Check that files starting with a shebang are +x
     firstline=$(head -n 1 "$i")
     if [ "${firstline:0:2}" = "#!" ]; then
@@ -75,13 +80,15 @@ for i in $(find elements -type f \
         fi
 
         # Ensure 4 spaces indent are used
-
         if [ "$(file -b --mime-type $i)" = "text/x-python" ]; then
             flake8 $i
         else
             if ! excluded indent ; then
-                if grep -q "^\( \{4\}\)* \{1,3\}[^ ]" ${i}; then
+                indent_regex='^\( \{4\}\)* \{1,3\}[^ ]'
+                if grep -q "$indent_regex" ${i}; then
                     error "$i should use 4 spaces indent"
+                    # outline the failing lines with line number
+                    grep -n "$indent_regex" ${i}
                 fi
             fi
         fi
@@ -91,11 +98,20 @@ for i in $(find elements -type f \
     if [ $(basename $i) = "element-deps" ]; then
         UNSORTED=${TMPDIR}/element-deps.unsorted
         SORTED=${TMPDIR}/element-deps.sorted
-        grep -v '^#' $i > ${UNSORTED}
+        grep -v -e '^#' -e '^$' $i > ${UNSORTED}
         sort ${UNSORTED} > ${SORTED}
         if [ -n "$(diff -c ${UNSORTED} ${SORTED})" ]; then
             error "$i is not sorted alphabetically"
+            diff -y ${UNSORTED} ${SORTED}
         fi
+    fi
+
+    # for consistency, let's just use #!/bin/bash everywhere (not
+    # /usr/bin/env, etc)
+    regex='^#!.*bash'
+    if [[ "$firstline" =~ $regex &&
+                "$firstline" != "#!/bin/bash" ]]; then
+        error "$i : only use #!/bin/bash for scripts"
     fi
 
     # Check that all scripts are set -eu -o pipefail and look for
@@ -108,7 +124,7 @@ for i in $(find elements -type f \
     # explicitly require bash for any scripts that don't have a specific
     # need to run under other shells, and any exceptions to that rule
     # may not want these checks either.
-    if [ -n "$(echo $firstline | grep '#!/bin/bash')" ]; then
+    if [[ "$firstline" =~ '#!/bin/bash' ]]; then
         if ! excluded sete; then
             if [ -z "$(grep "^set -[^ ]*e" $i)" ]; then
                 error "$i is not set -e"
@@ -151,4 +167,27 @@ md_docs=$(find elements -name '*.md')
 if [ -n "$md_docs" ]; then
     error ".md docs found: $md_docs"
 fi
+
+for i in $(find elements -name '*.yaml' \
+                -o \( -name pkg-map -type f -a \! -executable \)); do
+    py_check="
+import json
+import yaml
+import sys
+try:
+    objs = json.load(open('$i'))
+    sys.exit(0)
+except ValueError:
+    pass
+try:
+    objs = yaml.load(open('$i'))
+    sys.exit(0)
+except yaml.parser.ParserError:
+    pass
+sys.exit(1)"
+    if ! python -c "$py_check"; then
+        error "$i is not a valid yaml/json file"
+    fi
+done
+
 exit $rc

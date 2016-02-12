@@ -16,5 +16,19 @@ Beyond installing the ironic-python-agent, this element does the following:
   in order to support source based installation of ironic-python-agent and its
   dependencies.
 
+This element outputs three files:
+
+- ``$IMAGE-NAME.initramfs``: The deploy ramdisk file containing the
+  ironic-python-agent (IPA) service.
+- ``$IMAGE-NAME.kernel``: The kernel binary file.
+- ``$IMAGE-NAME.vmlinuz``: A hard link pointing to the ``$IMAGE-NAME.kernel``
+  file; this is just a backward compatibility layer, please do not rely
+  on this file.
+
+.. note::
+   The package based install currently only enables the service when using the
+   systemd init system. This can easily be changed if there is an agent
+   package which includes upstart or sysv packaging.
+
 .. note::
    Using the ramdisk will require at least 1.5GB of ram

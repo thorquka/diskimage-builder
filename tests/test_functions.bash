@@ -14,8 +14,7 @@ function build_test_image() {
     dest_dir=$(mktemp -d)
     base_dest=$(basename $dest_dir)
 
-    trap "rm -rf $dest_dir" EXIT
-    trap "docker rmi $base_dest/image" EXIT
+    trap "rm -rf $dest_dir; docker rmi $base_dest/image" EXIT
 
     ELEMENTS_PATH=$DIB_ELEMENTS:$TEST_ELEMENTS \
         $DIB_CMD -x $type_arg --docker-target=$base_dest/image \
@@ -32,7 +31,7 @@ function build_test_image() {
                 echo "Found image $img_path."
             fi
         else
-            if ! docker image | grep $base_dest/image ; then
+            if ! docker images | grep $base_dest/image ; then
                 echo "Error: No docker image with name $base_dest/image found!"
                 exit 1
             else
@@ -43,10 +42,12 @@ function build_test_image() {
 
     trap EXIT
     rm -rf $dest_dir
-    docker rmi $base_dest/image
+    if docker images | grep $base_dest/image ; then
+        docker rmi $base_dest/image
+    fi
 }
 
-function run_element_test() {
+function run_disk_element_test() {
     test_element=$1
     element=$2
 
@@ -55,7 +56,7 @@ function run_element_test() {
     trap "rm -rf $dest_dir /tmp/dib-test-should-fail" EXIT
 
     if break="after-error" break_outside_target=1 \
-        break_cmd="cp \$TMP_MOUNT_PATH/tmp/dib-test-should-fail /tmp/ || true" \
+        break_cmd="cp \$TMP_MOUNT_PATH/tmp/dib-test-should-fail /tmp/ 2>&1 > /dev/null || true" \
         ELEMENTS_PATH=$DIB_ELEMENTS:$DIB_ELEMENTS/$element/test-elements \
         $DIB_CMD -t tar -o $dest_dir/image -n $element $test_element; then
         if ! [ -f "$dest_dir/image.tar" ]; then
@@ -81,4 +82,27 @@ function run_element_test() {
 
     trap EXIT
     rm -rf $dest_dir /tmp/dib-test-should-fail
+}
+
+function run_ramdisk_element_test() {
+    test_element=$1
+    element=$2
+
+    dest_dir=$(mktemp -d)
+
+    if ELEMENTS_PATH=$DIB_ELEMENTS/$element/test-elements \
+        $DIB_CMD -o $dest_dir/image $element $test_element; then
+        # TODO(dtantsur): test also kernel presence once we sort out its naming
+        # problem (vmlinuz vs kernel)
+        if ! [ -f "$dest_dir/image.initramfs" ]; then
+            echo "Error: Build failed for element: $element, test-element: $test_element."
+            echo "No image $dest_dir/image.initramfs found!"
+            exit 1
+        else
+            echo "PASS: Element $element, test-element: $test_element"
+        fi
+    else
+        echo "Error: Build failed for element: $element, test-element: $test_element."
+        exit 1
+    fi
 }

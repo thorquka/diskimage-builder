@@ -12,7 +12,7 @@ if [ 'amd64' = "$ARCH" ] ; then
     ARCH="x86_64"
 fi
 
-BASE_URL=http://download.fedoraproject.org/pub/epel
+BASE_URL=${DIB_EPEL_MIRROR:-https://dl.fedoraproject.org/pub/epel}
 case "$DISTRO_NAME" in
     rhel7|centos7)
         RELEASE=7
@@ -29,3 +29,10 @@ case "$DISTRO_NAME" in
 esac
 PKG_NAME=$(wget -q $URL -O - |grep -oE "(href=\"epel-release-$RELEASE-[0-9,.].*)" | cut -d'"' -f2)
 rpm -q epel-release || yum install -y $URL/$PKG_NAME
+
+
+DIB_EPEL_MIRROR=${DIB_EPEL_MIRROR:-}
+[ -n "$DIB_EPEL_MIRROR" ] || exit 0
+
+# Set the EPEL mirror to use
+sed -e "s|^#baseurl=http://download.fedoraproject.org/pub/epel|baseurl=$DIB_EPEL_MIRROR|;/^mirrorlist=/d" -i /etc/yum.repos.d/epel.repo
