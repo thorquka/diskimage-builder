@@ -1,2 +1,3 @@
 #!/bin/bash
 unset DIB_RELEASE
+unset DIB_DISTRIBUTION_MIRROR
