@@ -11,3 +11,6 @@ util-linux:
 genisoimage:
 gdisk:
 kmod:
+lshw:
+psmisc:
+dosfstools:
