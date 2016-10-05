@@ -128,6 +128,7 @@ export ZEPPELIN_PID_DIR=${ZEPPELIN_HOME}/run
 EOF
 
 echo "In rc.local"
+cat <<- EOF | sudo tee /etc/rc.local
 sudo -u spark /etc/spark-1.6.0-bin-hadoop2.6/sbin/start-history-server.sh
 sudo /etc/zeppelin-0.6.0/bin/zeppelin-daemon.sh start
-
+EOF
