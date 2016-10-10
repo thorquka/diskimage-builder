@@ -17,7 +17,7 @@ echo "Create spark user"
 sudo useradd spark
 
 echo "Download Spark with appropriate version and unpack it"
-cd /etc/
+cd /opt/
 sudo wget http://d3kbcqa49mib13.cloudfront.net/spark-1.6.0-bin-hadoop2.6.tgz
 sudo tar -xvzf spark-1.6.0-bin-hadoop2.6.tgz
 
@@ -28,7 +28,7 @@ echo "Change the ownership of the folder and its elements"
 sudo chown -R spark:spark spark-1.6.0-bin-hadoop2.6
 
 echo "Spark path"
-export SPARK_HOME=/etc/spark-1.6.0-bin-hadoop2.6
+export SPARK_HOME=/opt/spark-1.6.0-bin-hadoop2.6
 export PATH="$SPARK_HOME/bin:$PATH"
 
 echo "Create log, pid and spark-history directories"
@@ -83,31 +83,31 @@ echo "Install git"
 sudo apt-get -y install git
 
 echo "Install maven"
-cd /etc
+cd /opt
 sudo wget http://mirror.switch.ch/mirror/apache/dist/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz
 sudo tar xzvf apache-maven-3.3.9-bin.tar.gz
 
 echo "Export variables"
-export M2_HOME=/etc/apache-maven-3.3.9
+export M2_HOME=/opt/apache-maven-3.3.9
 export M2=$M2_HOME/bin
 
 echo "Create zeppelin user"
 sudo useradd zeppelin
 
 echo "Download zeppelin and unpack it"
-cd /etc
+cd /opt
 sudo wget https://archive.apache.org/dist/zeppelin/zeppelin-0.6.0/zeppelin-0.6.0.tgz
 sudo tar xvzf zeppelin-0.6.0.tgz
 
 echo "Export zeppelin home"
-export ZEPPELIN_HOME=/etc/zeppelin-0.6.0
+export ZEPPELIN_HOME=/opt/zeppelin-0.6.0
 
 echo "Step into zeppelin and build it"
 cd $ZEPPELIN_HOME
 sudo $M2/mvn clean package -Pspark-1.6 -Dspark.version=1.6.0 -DskipTests
 
 echo "Change ownership"
-sudo chown zeppelin:zeppelin -R /etc/zeppelin-0.6.0
+sudo chown zeppelin:zeppelin -R /opt/zeppelin-0.6.0
 
 echo "Create log and pid directories"
 sudo mkdir /var/log/zeppelin
@@ -122,13 +122,14 @@ sudo touch $ZEPPELIN_HOME/conf/zeppelin-env.sh
 
 echo "Add lines to zeppelin-env.sh"
 cat <<- EOF | sudo tee $ZEPPELIN_HOME/conf/zeppelin-env.sh
-export SPARK_HOME=/etc/spark-1.6.0-bin-hadoop2.6
+export SPARK_HOME=/opt/spark-1.6.0-bin-hadoop2.6
 export ZEPPELIN_LOG_DIR=/var/log/zeppelin
 export ZEPPELIN_PID_DIR=${ZEPPELIN_HOME}/run
 EOF
 
 echo "In rc.local"
 cat <<- EOF | sudo tee /etc/rc.local
-sudo -u spark /etc/spark-1.6.0-bin-hadoop2.6/sbin/start-history-server.sh
-sudo /etc/zeppelin-0.6.0/bin/zeppelin-daemon.sh start
+sudo -u spark /opt/spark-1.6.0-bin-hadoop2.6/sbin/start-history-server.sh
+sudo /opt/zeppelin-0.6.0/bin/zeppelin-daemon.sh start
 EOF
+
