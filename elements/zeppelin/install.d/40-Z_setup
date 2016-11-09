@@ -111,6 +111,10 @@ else
 fi
 sudo tar xvzf zeppelin-0.6.0.tgz
 
+# Download hortonworks notebooks
+sudo rm -rf /opt/zeppelin-0.6.0/notebook
+sudo git clone https://github.com/hortonworks-gallery/zeppelin-notebooks.git /opt/zeppelin-0.6.0/notebook
+
 echo "Export zeppelin home"
 export ZEPPELIN_HOME=/opt/zeppelin-0.6.0
 
@@ -126,8 +130,8 @@ sudo mkdir /var/log/zeppelin
 sudo chown zeppelin:zeppelin /var/log/zeppelin
 sudo -u zeppelin mkdir $ZEPPELIN_HOME/run
 
-echo "Remove the default tutorials"
-sudo rm -rf $ZEPPELIN_HOME/notebook/*
+#echo "Remove the default tutorials"
+#sudo rm -rf $ZEPPELIN_HOME/notebook/*
 
 echo "Create zeppelin-env.sh"
 sudo touch $ZEPPELIN_HOME/conf/zeppelin-env.sh
