@@ -104,12 +104,7 @@ sudo useradd zeppelin
 
 echo "Download zeppelin and unpack it"
 cd /opt
-if curl -s --head  --request GET http://86.119.37.182/zeppelin/zeppelin-0.6.0.tgz | grep "200 OK" > /dev/null
-    then sudo wget http://86.119.37.182/zeppelin/zeppelin-0.6.0.tgz
-else
-    sudo wget https://archive.apache.org/dist/zeppelin/zeppelin-0.6.0/zeppelin-0.6.0.tgz
-fi
-sudo tar xvzf zeppelin-0.6.0.tgz
+sudo git clone -b branch-0.6 https://github.com/apache/zeppelin/ zeppelin-0.6.0
 
 # Download hortonworks notebooks
 sudo rm -rf /opt/zeppelin-0.6.0/notebook
