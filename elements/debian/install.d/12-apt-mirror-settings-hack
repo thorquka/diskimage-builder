@@ -3,5 +3,3 @@ cat <<- "EOF1" > /etc/cloud/cloud.cfg.d/99-local-mirror-only.cfg
 apt_preserve_sources_list: true
 EOF1
 
-sed -i 's/nova.clouds.archive.debian.com/ch.archive.debian.com/g' /etc/apt/sources.list
-
