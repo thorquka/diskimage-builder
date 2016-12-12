@@ -26,6 +26,8 @@ else
     "armv"*)
       _ARCH="armhf"
       ;;
+    "aarch64")
+      ;;
     *)
       echo "WARNING: Unknown architecture: $_ARCH"
       ;;
@@ -34,6 +36,7 @@ fi
 ARCH=${ARCH:-$_ARCH}
 export ARCH
 
+export DIB_CHECKSUM=${DIB_CHECKSUM:-0}
 export DIB_NO_TMPFS=${DIB_NO_TMPFS:-0}
 export DIB_MIN_TMPFS=${DIB_MIN_TMPFS:-2}
 # Set via the CLI normally.

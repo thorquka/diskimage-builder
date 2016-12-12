@@ -9,10 +9,10 @@ set -o pipefail
 [ -n "$ARCH" ]
 [ -n "$TARGET_ROOT" ]
 
-if [ 'amd64' = "$ARCH" ] ; then
+if [[ "amd64 x86_64" =~ "$ARCH" ]]; then
     ARCH="x86_64"
 else
-    echo 'rhel7 root element only support the amd64 $ARCH value.'
+    echo 'rhel7 root element only support the x86_64 $ARCH value.'
     exit 1
 fi
 
@@ -26,7 +26,7 @@ if [ -n "$DIB_LOCAL_IMAGE" ]; then
     BASE_IMAGE_FILE=`basename $DIB_LOCAL_IMAGE`
     BASE_IMAGE_TAR=$BASE_IMAGE_FILE.tgz
 else
-    if [ -z "${BASE_IMAGE_FILE:-}" -o -z "${DIB_CLOUD_IMAGES}" ]; then
+    if [ -z "${BASE_IMAGE_FILE:-}" -o -z "${DIB_CLOUD_IMAGES:-}" ]; then
         echo "No source for a base image file configured."
         echo "See rhel7 element readme for details on how to obtain and use a base image."
         exit 1

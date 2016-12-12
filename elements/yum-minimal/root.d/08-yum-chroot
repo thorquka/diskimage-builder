@@ -14,6 +14,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 #
+
+# dib-lint: disable=safe_sudo
+
 if [ "${DIB_DEBUG_TRACE:-0}" -gt 0 ]; then
     set -x
 fi
@@ -53,6 +56,7 @@ _RPM="rpm --dbpath=/var/lib/rpm"
 # has yum/yumdownloader
 function _install_repos {
     local packages
+    local rc
 
     # pre-install the base system packages via rpm.  We previously
     # just left it up to yum to drag these in when we "yum install
@@ -76,11 +80,21 @@ function _install_repos {
         packages+="${DISTRO_NAME}-repos "
     fi
 
-    yumdownloader \
+    # yumdownloader puts repo xml files and such into a directory
+    # ${TMPDIR}/yum-$USER-random.  Since we don't need this once the
+    # initial download happens, redirect TMPDIR for this call so we
+    # can clean it up nicely
+    local temp_tmp
+    temp_tmp=$(mktemp -d)
+    TMPDIR=${temp_tmp} yumdownloader \
         --releasever=$DIB_RELEASE \
         --setopt=reposdir=$TMP_HOOKS_PATH/yum.repos.d \
         --destdir=$WORKING \
-        ${packages}
+        ${packages} && rc=$? || rc=$?
+    rm -rf ${temp_tmp}
+    if [[ ${rc} != 0 ]]; then
+        die "Failed to download initial packages: ${packages}"
+    fi
 
     # --nodeps works around these wanting /bin/sh in some fedora
     # releases, see rhbz#1265873
@@ -124,15 +138,51 @@ function _install_pkg_manager {
     (
         flock -w 1200 9 || die "Can not lock .rpmmacros"
         echo "%_dbpath /var/lib/rpm" >> $HOME/.rpmmacros
+
+        _lang_pack=""
+
+        if [ $DISTRO_NAME = "fedora" -a $DIB_RELEASE -le 23 ]; then
+            # _install_langs is a rpm macro that limits the translation
+            # files, etc installed by packages.  For Fedora 23 [1], the
+            # glibc-common package will obey this to only install the
+            # listed locales, keeping things much smaller (we still have
+            # to clean up locales manually on centos7).  We install just
+            # en_US because people often ssh in with that locale, but
+            # leave out everything else.  Note that yum has an option to
+            # set this from the command-line [2], but the yum in trusty we
+            # are using is too old to have it.  So we set it directly in
+            # the macros file
+            #
+            # [1] http://pkgs.fedoraproject.org/cgit/rpms/glibc.git/commit/glibc.spec?h=f23&id=91764bd9ec690d4b8a886c0a3a104aac12d340d2
+            # [2] http://yum.baseurl.org/gitweb?p=yum.git;a=commit;h=26128173b362474456e8f0642073ecb0322ed031
+            echo "%_install_langs C:en_US:en_US.UTF-8" >> $HOME/.rpmmacros
+        elif [ $DISTRO_NAME = "fedora" -a $DIB_RELEASE -ge 24 ]; then
+            # glibc on F24 has split locales into "langpack" packages.
+            # Yum doesn't understand the weak-dependencies glibc now
+            # uses to get the minimal-langpack and chooses a
+            # random(ish) one that satisfies the locale dependency
+            # (rhbz#1349258).  Work-around this by explicitly requring
+            # the minimal and english (for en_US.UTF-8) pack.
+            _lang_pack="glibc-minimal-langpack glibc-langpack-en"
+        fi
+
         sudo -E yum -y \
+            --disableexcludes=all \
             --setopt=cachedir=$YUM_CACHE/$ARCH/$DIB_RELEASE \
             --setopt=reposdir=$TARGET_ROOT/etc/yum.repos.d \
             --releasever=$DIB_RELEASE \
             --installroot $TARGET_ROOT \
-            install $@
-        sed -i '$ d' $HOME/.rpmmacros
+            install $@ ${_lang_pack} && rc=$? || rc=$?
+
+        # We modified the base system - make sure we clean up always!
+        rm $HOME/.rpmmacros.dib.lock
+        # sed makes it easy to remove last line, but not last n lines...
+        sed -i '$ d' $HOME/.rpmmacros; sed -i '$ d' $HOME/.rpmmacros;
+        if [ $rc != 0 ]; then
+            die "Initial yum install to chroot failed!  Can not continue."
+        fi
     ) 9>$HOME/.rpmmacros.dib.lock
-    rm $HOME/.rpmmacros.dib.lock
+
     # Set gpg path back because subsequent actions will take place in
     # the chroot
     sudo sed -i "s,$TARGET_ROOT/etc/pki/rpm-gpg,/etc/pki/rpm-gpg,g" \
@@ -170,8 +220,8 @@ else
 
     _install_repos
 
+    # install dnf for >= f22
     if [ $DIB_RELEASE -ge 22 ]; then
-        # install dnf for >= f22
         _install_pkg_manager dnf dnf-plugins-core yum
     else
         _install_pkg_manager yum
@@ -183,12 +233,26 @@ else
     sudo -E chroot $TARGET_ROOT rpm --rebuilddb
     sudo -E chroot $TARGET_ROOT ${YUM} clean all
 
+    # populate the lang reduction macro in the chroot
+    echo "%_install_langs C:en_US:en_US.UTF-8" | \
+        sudo tee -a $TARGET_ROOT/etc/rpm/macros.langs > /dev/null
+
     # bootstrap the environment within the chroot; bring in new
     # metadata with an update and install some base packages we need.
     sudo -E chroot $TARGET_ROOT ${YUM} -y update
     sudo -E chroot $TARGET_ROOT ${YUM} -y \
         --setopt=cachedir=/tmp/yum/$ARCH/$DIB_RELEASE \
-        install passwd findutils sudo util-linux-ng
+        install systemd passwd findutils sudo util-linux-ng
+
+    # This package is split out from systemd on >F24, dracut is
+    # missing the dependency and will fail to make an initrd without
+    # it; see
+    #  https://bugzilla.redhat.com/show_bug.cgi?id=1398505
+    if [ $DISTRO_NAME = "fedora" -a $DIB_RELEASE -ge 24 ]; then
+        sudo -E chroot $TARGET_ROOT ${YUM} -y \
+            --setopt=cachedir=/tmp/yum/$ARCH/$DIB_RELEASE \
+            install systemd-udev
+    fi
 
     # Put in a dummy /etc/resolv.conf over the temporary one we used
     # to bootstrap.  systemd has a bug/feature [1] that it will assume
@@ -198,6 +262,13 @@ else
     # [1] https://bugzilla.redhat.com/show_bug.cgi?id=1197204
     echo -e "# This file intentionally left blank\n" | \
         sudo tee $TARGET_ROOT/etc/resolv.conf
+
+    # set the most reliable UTF-8 locale
+    echo -e 'LANG="en_US.UTF-8"' | \
+        sudo tee $TARGET_ROOT/etc/locale.conf
+    # default to UTC
+    sudo -E chroot $TARGET_ROOT ln -sf /usr/share/zoneinfo/UTC \
+        /etc/localtime
 
     # cleanup
     # TODO : move this into a exit trap; and reconsider how

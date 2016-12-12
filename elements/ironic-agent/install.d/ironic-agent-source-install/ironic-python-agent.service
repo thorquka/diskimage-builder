@@ -1,8 +1,9 @@
 [Unit]
 Description=Ironic Python Agent
-After=network.target
+After=network-online.target
 
 [Service]
+ExecStartPre=/usr/sbin/modprobe vfat
 ExecStart=/usr/local/bin/ironic-python-agent
 Restart=always
 RestartSec=30s

@@ -1,2 +1,3 @@
 debian-minimal
 cloud-init-datasources
+openssh-server

@@ -172,11 +172,12 @@ the image as executable files.
 Environment Variables
 ^^^^^^^^^^^^^^^^^^^^^
 
-To set environment variables for other hooks, add a file to your element
-``environment.d``.
-
-This directory contains bash script snippets that are sourced before running
-scripts in each phase.
+To set environment variables for other hooks, add a file to your
+element ``environment.d``.  This directory contains bash script
+snippets that are sourced before running scripts in each phase.  Note
+that because environment includes are sourced together, they should
+not set global flags like ``set -x`` because they will affect all
+preceeding imports.
 
 DIB exposes an internal ``$IMAGE_ELEMENT`` variable which provides elements
 access to the full set of elements that are included in the image build. This
@@ -385,6 +386,11 @@ line to run it.  If it should not be run as part of the default CI
 run, you can submit a change with it added to ``DEFAULT_SKIP_TESTS``
 in that file.
 
+Running the functional tests is time consuming.  Multiple parallel
+jobs can be started by specifying ``-j <job count>``.  Each of the
+jobs uses a lot resources (CPU, disk space, RAM) - therefore the job
+count must carefully be chosen.
+
 python
 """"""
 
@@ -425,3 +431,30 @@ example if one were building tripleo-images, the variable would be set like:
 
       export ELEMENTS_PATH=tripleo-image-elements/elements
       disk-image-create rhel7 cinder-api
+
+Linting
+-------
+
+You should always run ``bin/dib-lint`` over your elements.  It will
+warn you of common issues.
+
+sudo
+""""
+
+Using ``sudo`` outside the chroot environment can cause breakout
+issues where you accidentally modify parts of the host
+system. ``dib-lint`` will warn if it sees ``sudo`` calls that do not
+use the path arguments given to elements running outside the chroot.
+
+To disable the error for a call you know is safe, add
+
+::
+
+   # dib-lint: safe_sudo
+
+to the end of the ``sudo`` command line.  To disable the check for an
+entire file, add
+
+::
+
+   # dib-lint: disable=safe_sudo

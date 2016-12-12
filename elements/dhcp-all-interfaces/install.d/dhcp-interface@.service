@@ -1,6 +1,7 @@
 [Unit]
 Description=DHCP interface %I
-After=network.service network.target
+Before=network-pre.target
+Wants=network-pre.target
 
 ConditionPathExists=!/etc/sysconfig/network-scripts/ifcfg-%I
 
@@ -10,6 +11,7 @@ User=root
 ExecStartPre=/usr/local/sbin/dhcp-all-interfaces.sh %I
 ExecStart=/sbin/ifup %I
 RemainAfterExit=true
+TimeoutStartSec=30s
 
 [Install]
 WantedBy=multi-user.target
