@@ -45,8 +45,9 @@ chown ubuntu:ubuntu /home/ubuntu/.jupyter/jupyter_notebook_config.py
 
 echo "Run jupyter"
 echo "In rc.local"
-cat <<- EOF | sudo tee /etc/rc.local
+cat <<- EOF | sudo tee -a /etc/rc.local
 jupyter-notebook &
+exit 0
 EOF
 
 
